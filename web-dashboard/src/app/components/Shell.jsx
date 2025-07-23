@@ -1,8 +1,10 @@
+import Terminal from "./terminal";
+
 export default function Shell() {
     return (
         <div className="ShellContainer">
             <p>Shell Output</p>
-            <textarea name="Shell" id="Shell"></textarea>
+            <Terminal></Terminal>
             <input type="text" name="commande" id="commande" placeholder="Enter command here..."/>
         </div>
     );
