@@ -43,7 +43,6 @@ export default function Dashboard() {
         fetchIp();
         const intervalId = setInterval(() => {
             fetchStatus();
-            fetchIp();
         }, 10000);
         return () => clearInterval(intervalId);
     }, []);
