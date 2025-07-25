@@ -1,8 +1,10 @@
 import os
 from requests import get
+import system
+import platform
 
 def get_user_os():
-    return os.name
+    return platform.system().lower()
 
 
 def get_ip():
