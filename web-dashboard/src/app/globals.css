@@ -119,6 +119,29 @@ a:hover{
   margin-left: 5.4rem;
 }
 
+.terminal{
+  background-color: black;
+  display: flex;
+  flex-direction: column;
+  height: 200px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  width: 200%;
+  border-radius: 10px;
+  padding: 10px;
+  gap: 5px;
+}
+
+.TerminalName{
+  color: rgb(0, 158, 0);
+}
+
+.tidle{
+  color: rgb(40, 40, 255);
+}
+
+
+
 
 input{
   background-color: #293038;
