@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 
 export default function Dashboard() {
     const [status, setStatus] = useState("Loading...");
+    const [ip, setIp] = useState("Loading...");
 
     useEffect(() => {
         async function fetchStatus() {
@@ -21,7 +22,30 @@ export default function Dashboard() {
                 console.error("Error fetching status:", error);
             }
         }
+
+        async function fetchIp() {
+            try {
+                const response = await fetch("http://192.168.10.106:8000/ip");
+                let data = await response.text();
+                // Remove JSON wrapper {"ip":""} if present
+                const match = data.match(/^\{"ip":"(.+)"\}$/);
+                if (match) {
+                    data = match[1];
+                }
+                setIp(data);
+            } catch (error) {
+                setIp("Unavailable");
+                console.error("Error fetching IP:", error);
+            }
+        }
+
         fetchStatus();
+        fetchIp();
+        const intervalId = setInterval(() => {
+            fetchStatus();
+            fetchIp();
+        }, 10000);
+        return () => clearInterval(intervalId);
     }, []);
 
     return (
@@ -39,8 +63,8 @@ export default function Dashboard() {
                 <h2>Last Accessed: 2 hours ago</h2>
             </div>
             <div className="status">
-                <p>status</p>
-                <h2>Online</h2>
+                <p>IP</p>
+                <h2>{ip}</h2>
             </div>
         </div>
     );
