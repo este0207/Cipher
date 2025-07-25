@@ -111,6 +111,43 @@ export default function MonitorPage() {
     }
   };
 
+  // Formulaire de notification custom
+  const [notifMsg, setNotifMsg] = useState("");
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifSubtitle, setNotifSubtitle] = useState("");
+  const [notifDialog, setNotifDialog] = useState(false);
+  const [notifButtons, setNotifButtons] = useState("OK");
+  const [notifDefault, setNotifDefault] = useState("OK");
+
+  const sendNotif = async (e) => {
+    e.preventDefault();
+    setResult("Chargement...");
+    try {
+      const url = `http://${ip}:${port}/notify`;
+      const body = {
+        message: notifMsg,
+        title: notifTitle,
+        subtitle: notifSubtitle,
+        dialog: notifDialog,
+        buttons: notifButtons.split(",").map(b => b.trim()).filter(Boolean),
+        default_button: notifDefault
+      };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      let text = await res.text();
+      try {
+        const obj = JSON.parse(text);
+        text = <pre style={{ color: "#00bfff", fontSize: 16, whiteSpace: "pre-wrap", wordBreak: "break-all", margin: 0 }}>{JSON.stringify(obj, null, 2)}</pre>;
+      } catch {}
+      setResult(text);
+    } catch (e) {
+      setResult("Erreur: " + e.message);
+    }
+  };
+
   if (!ip || !port) return null;
 
   return (
@@ -149,6 +186,24 @@ export default function MonitorPage() {
               <button type="submit" style={{ width: "100%", fontSize: 18, padding: "16px 0" }}>Lancer Zombie</button>
             </form>
           </div>
+        </div>
+        <div style={{ background: "#222", borderRadius: 10, padding: 24, boxShadow: "0 2px 12px #0004", marginBottom: 32 }}>
+          <h2 style={{ marginTop: 0, marginBottom: 16 }}>Envoyer une notification</h2>
+          <form onSubmit={sendNotif} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input type="text" value={notifMsg} onChange={e => setNotifMsg(e.target.value)} placeholder="Message" style={{ fontSize: 16 }} />
+            <input type="text" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} placeholder="Titre" style={{ fontSize: 16 }} />
+            <input type="text" value={notifSubtitle} onChange={e => setNotifSubtitle(e.target.value)} placeholder="Sous-titre (optionnel)" style={{ fontSize: 16 }} />
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="checkbox" checked={notifDialog} onChange={e => setNotifDialog(e.target.checked)} /> Dialog (popup)
+            </label>
+            {notifDialog && (
+              <>
+                <input type="text" value={notifButtons} onChange={e => setNotifButtons(e.target.value)} placeholder="Boutons (séparés par des virgules)" style={{ fontSize: 16 }} />
+                <input type="text" value={notifDefault} onChange={e => setNotifDefault(e.target.value)} placeholder="Bouton par défaut" style={{ fontSize: 16 }} />
+              </>
+            )}
+            <button type="submit" style={{ fontSize: 18, padding: "12px 0", borderRadius: 6 }}>Envoyer</button>
+          </form>
         </div>
       </div>
       {/* Colonne Résultat */}

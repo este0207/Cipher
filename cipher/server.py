@@ -239,20 +239,39 @@ def send_notification(request: Request):
     try:
         data = request.json() if hasattr(request, 'json') else {}
         message = data.get('message', 'Notification from server!')
+        title = data.get('title', 'Nouvelle Notification !')
+        subtitle = data.get('subtitle', '')
+        dialog = data.get('dialog', False)
     except Exception:
         message = 'Notification from server!'
+        title = 'Nouvelle Notification !'
+        subtitle = ''
+        dialog = False
     system = platform.system().lower()
     if system == 'darwin':
-        import pync
-        pync.notify(message, title='Nouvelle Notification !')
+        import subprocess
+        if dialog:
+            # Affiche une boîte de dialogue
+            buttons = data.get('buttons', ['OK'])
+            default_button = data.get('default_button', buttons[0] if buttons else 'OK')
+            btns = ', '.join([f'"{b}"' for b in buttons])
+            osa_cmd = f'display dialog "{message}" with title "{title}" buttons {{{btns}}} default button "{default_button}"'
+            result = subprocess.run(["osascript", "-e", osa_cmd], capture_output=True, text=True)
+            return {"status": "dialog_shown", "result": result.stdout.strip()}
+        else:
+            osa_cmd = f'display notification "{message}" with title "{title}"'
+            if subtitle:
+                osa_cmd += f' subtitle "{subtitle}"'
+            subprocess.run(["osascript", "-e", osa_cmd])
+            return {"status": "notified", "message": message, "title": title, "subtitle": subtitle}
     elif system == 'windows':
         from plyer import notification
         notification.notify(
-            title='Nouvelle Notification !',
+            title=title,
             message=message,
             timeout=5
         )
+        return {"status": "notified", "message": message, "title": title}
     else:
         return {"status": "error", "error": "Notifications not supported on this OS."}
-    return {"status": "notified", "message": message}
 
