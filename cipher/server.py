@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from utils import get_user_os, get_ip
+from utils import get_user_os, get_ip, get_os_spec
 import subprocess
 import threading
 from pynput import keyboard
@@ -27,6 +27,10 @@ def read_os():
 @app.get("/ip")
 def read_ip():
     return {"ip": get_ip()}
+
+@app.get('/system-info')
+def get_system():
+    return {"spec":get_os_spec()}
 
 @app.post("/shell")
 async def run_shell(request: Request):

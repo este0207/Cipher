@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+psutil
+gputil
+pynput
+requests 

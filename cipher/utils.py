@@ -1,6 +1,6 @@
 import os
 from requests import get
-import system
+
 import platform
 import psutil
 import GPUtil
