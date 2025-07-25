@@ -2,14 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 
-export default function Dashboard() {
+export default function Dashboard({ ip, port }) {
     const [status, setStatus] = useState("Loading...");
-    const [ip, setIp] = useState("Loading...");
+    const [deviceIp, setDeviceIp] = useState("Loading...");
 
     useEffect(() => {
+        if (!ip || !port) return;
         async function fetchStatus() {
             try {
-                const response = await fetch("http://192.168.10.106:8000/status");
+                const response = await fetch(`http://${ip}:${port}/status`);
                 let data = await response.text();
                 // Remove JSON wrapper {"status":""} if present
                 const match = data.match(/^\{"status":"(.+)"\}$/);
@@ -25,16 +26,16 @@ export default function Dashboard() {
 
         async function fetchIp() {
             try {
-                const response = await fetch("http://192.168.10.106:8000/ip");
+                const response = await fetch(`http://${ip}:${port}/ip`);
                 let data = await response.text();
                 // Remove JSON wrapper {"ip":""} if present
                 const match = data.match(/^\{"ip":"(.+)"\}$/);
                 if (match) {
                     data = match[1];
                 }
-                setIp(data);
+                setDeviceIp(data);
             } catch (error) {
-                setIp("Unavailable");
+                setDeviceIp("Unavailable");
                 console.error("Error fetching IP:", error);
             }
         }
@@ -45,7 +46,7 @@ export default function Dashboard() {
             fetchStatus();
         }, 10000);
         return () => clearInterval(intervalId);
-    }, []);
+    }, [ip, port]);
 
     return (
         <div className="dashboard">
@@ -63,7 +64,7 @@ export default function Dashboard() {
             </div>
             <div className="status">
                 <p>IP</p>
-                <h2>{ip}</h2>
+                <h2>{deviceIp}</h2>
             </div>
         </div>
     );

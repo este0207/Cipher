@@ -3,5 +3,9 @@ uvicorn
 psutil
 gputil
 pynput
-requests 
-pydub
+requests
+pyautogui
+pillow
+plyer
+pync
+pycryptodome
