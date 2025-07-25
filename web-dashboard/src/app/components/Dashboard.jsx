@@ -1,9 +1,34 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+
 export default function Dashboard() {
+    const [status, setStatus] = useState("Loading...");
+
+    useEffect(() => {
+        async function fetchStatus() {
+            try {
+                const response = await fetch("http://192.168.10.106:8000/status");
+                let data = await response.text();
+                // Remove JSON wrapper {"status":""} if present
+                const match = data.match(/^\{"status":"(.+)"\}$/);
+                if (match) {
+                    data = match[1];
+                }
+                setStatus(data);
+            } catch (error) {
+                setStatus("Offline");
+                console.error("Error fetching status:", error);
+            }
+        }
+        fetchStatus();
+    }, []);
+
     return (
         <div className="dashboard">
             <div className="connection">
                 <p>Connection Status</p>
-                <h2>Connected</h2>
+                <h2>{status}</h2>
             </div>
             <div className="information">
                 <p>Device Information</p>
