@@ -2,15 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 
-export default function Dashboard({ ip, port }) {
+export default function Dashboard() {
     const [status, setStatus] = useState("Loading...");
-    const [deviceIp, setDeviceIp] = useState("Loading...");
+    const [ip, setIp] = useState("Loading...");
 
     useEffect(() => {
-        if (!ip || !port) return;
         async function fetchStatus() {
             try {
-                const response = await fetch(`http://${ip}:${port}/status`);
+                const response = await fetch("http://192.168.10.106:8000/status");
                 let data = await response.text();
                 // Remove JSON wrapper {"status":""} if present
                 const match = data.match(/^\{"status":"(.+)"\}$/);
@@ -26,16 +25,11 @@ export default function Dashboard({ ip, port }) {
 
         async function fetchIp() {
             try {
-                const response = await fetch(`http://${ip}:${port}/ip`);
+                const response = await fetch("http://192.168.10.106:8000/ip");
                 let data = await response.text();
-                // Remove JSON wrapper {"ip":""} if present
-                const match = data.match(/^\{"ip":"(.+)"\}$/);
-                if (match) {
-                    data = match[1];
-                }
-                setDeviceIp(data);
+                setIp(data);
             } catch (error) {
-                setDeviceIp("Unavailable");
+                setIp("Unavailable");
                 console.error("Error fetching IP:", error);
             }
         }
@@ -44,9 +38,10 @@ export default function Dashboard({ ip, port }) {
         fetchIp();
         const intervalId = setInterval(() => {
             fetchStatus();
+            fetchIp();
         }, 10000);
         return () => clearInterval(intervalId);
-    }, [ip, port]);
+    }, []);
 
     return (
         <div className="dashboard">
@@ -64,7 +59,7 @@ export default function Dashboard({ ip, port }) {
             </div>
             <div className="status">
                 <p>IP</p>
-                <h2>{deviceIp}</h2>
+                <h2>{ip}</h2>
             </div>
         </div>
     );

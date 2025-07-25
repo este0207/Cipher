@@ -2,13 +2,14 @@
 
 import React, { useState, useRef, useEffect } from "react";
 
-function ShellPrompt({ prompt, command, cursor, onKeyDown, onClick }) {
+function ShellPrompt({ prompt, command, cursor, onKeyDown, onClick, onPaste }) {
     return (
         <div
             tabIndex={0}
             style={{ outline: "none", display: "flex", fontFamily: "monospace", fontSize: 18, width: "100%" }}
             onKeyDown={onKeyDown}
             onClick={onClick}
+            onPaste={onPaste}
             className="shell-prompt-line"
         >
             <span style={{ color: "#00bfff", fontWeight: 700 }}>{prompt}</span>
@@ -101,6 +102,12 @@ export default function Shell({ ip, port }) {
         }
     };
 
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const paste = e.clipboardData.getData('text');
+        setCurrentCommand(cmd => cmd + paste);
+    };
+
     const handleShellClick = () => {
         if (shellRef.current) shellRef.current.focus();
     };
@@ -127,6 +134,7 @@ export default function Shell({ ip, port }) {
                 cursor={loading ? "" : "|"}
                 onKeyDown={() => {}}
                 onClick={handleShellClick}
+                onPaste={handlePaste}
             />
             <div ref={scrollRef} />
         </div>
