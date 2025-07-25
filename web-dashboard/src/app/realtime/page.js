@@ -9,6 +9,8 @@ export default function RealTimePage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("Connecting...");
+  const [typedBuffer, setTypedBuffer] = useState(""); // plus utilisé
+  const [lines, setLines] = useState([""]);
   const router = useRouter();
   const scrollRef = useRef(null);
 
@@ -27,7 +29,21 @@ export default function RealTimePage() {
     socket.onclose = () => setStatus("Disconnected");
     socket.onerror = () => setStatus("Error");
     socket.onmessage = (event) => {
-      setMessages(msgs => [...msgs, { from: "server", text: event.data }]);
+      let str = event.data;
+      // Nettoyage : retire 'Key pressed:', remplace 'space' ou 'Key.space' par un espace, enlève les guillemets
+      str = str.replace(/Key pressed: ?/g, "").replace(/Key\.space|space/g, " ").replace(/["']/g, "");
+      // Gestion des retours à la ligne
+      setLines(lines => {
+        const parts = str.split(/\n/);
+        let newLines = [...lines];
+        // Ajoute le premier morceau à la dernière ligne
+        newLines[newLines.length - 1] += parts[0];
+        // Pour chaque retour à la ligne, ajoute une nouvelle ligne
+        for (let i = 1; i < parts.length; i++) {
+          newLines.push(parts[i]);
+        }
+        return newLines;
+      });
     };
     return () => socket.close();
   }, [router]);
@@ -52,10 +68,8 @@ export default function RealTimePage() {
     <div style={{ maxWidth: 900, margin: "0 auto", padding: 32, width: "100%" }}>
       <h1 style={{ textAlign: "center", marginBottom: 24 }}>Real Time (WebSocket)</h1>
       <div style={{ background: "#181818", borderRadius: 8, padding: 16, minHeight: 320, fontFamily: "monospace", fontSize: 18, width: "100%", boxShadow: "0 2px 12px #0004", marginBottom: 24, maxHeight: 500, overflowY: "auto" }}>
-        {messages.map((msg, i) => (
-          <div key={i} style={{ color: msg.from === "me" ? "#00bfff" : "#e0e0e0", textAlign: msg.from === "me" ? "right" : "left", margin: "2px 0" }}>
-            {msg.from === "me" ? "> " : "< "}{msg.text}
-          </div>
+        {lines.map((line, i) => (
+          <pre key={i} style={{ color: "#00bfff", fontSize: 18, whiteSpace: "pre-wrap", wordBreak: "break-all", margin: 0 }}>{line}</pre>
         ))}
         <div ref={scrollRef} />
       </div>
